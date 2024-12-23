@@ -1,14 +1,32 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
-import { PriceConverter } from "./PriceConverter.sol";
+pragma solidity ^0.8.24;
+// import { PriceConverter } from "./PriceConverter.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-// 656427
-// 636085
-// 612938
-// 536562
 error notOwner();
 error callFailed();
 error min5Usd();
+
+library PriceConverter {
+    // address constant addr = 0x694AA1769357215DE4FAC081bf1f309aDC325306;
+    address constant addr = 0xfEefF7c3fB57d18C5C6Cdd71e45D2D0b4F9377bF;
+
+    function GetVersion() internal view returns(uint256) {
+        return AggregatorV3Interface(addr).version();
+    }
+
+    function GetPrice() public view returns(uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(addr);
+        (,int256 answer,,,) = priceFeed.latestRoundData();
+        return uint256(answer * 1e10);
+    }
+
+    function GetConversionRate(uint256 ethAmount) public view returns(uint256) {
+        uint256 ethPrice = GetPrice();
+        uint256 ethAmountInUsd = (ethPrice * ethAmount) / 1e18;
+        return ethAmountInUsd;
+    }
+}
 
 contract FundMe {
     using PriceConverter for uint256;
@@ -44,5 +62,13 @@ contract FundMe {
         // require(msg.sender == i_owner, "Not an Owner");
         if(msg.sender != i_owner) revert notOwner();
         _;
+    }
+
+    receive() external payable {
+        Fund();
+    }
+
+    fallback() external payable {
+        Fund();
     }
 }
